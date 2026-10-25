@@ -8,12 +8,20 @@ export default function Admin() {
   const [error, setError] = useState('')
   const [section, setSection] = useState('Overview')
 
+  const [isAdmin, setIsAdmin] = useState<boolean | null>(null)
+
   useEffect(() => {
     if (!supabase) return
     supabase.auth.getSession().then(({ data }) => setSession(data.session))
     const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => setSession(s))
     return () => sub.subscription.unsubscribe()
   }, [])
+
+  useEffect(() => {
+    if (!supabase || !session) { setIsAdmin(null); return }
+    supabase.from('admin_profiles').select('user_id').eq('user_id', session.user.id).maybeSingle()
+      .then(({ data }) => setIsAdmin(!!data))
+  }, [session])
 
   async function login(e: React.FormEvent) {
     e.preventDefault()
@@ -32,7 +40,17 @@ export default function Admin() {
     )
   }
 
-  if (!session) {
+  if (!session || isAdmin === false) {
+    if (session && isAdmin === false) {
+      return (
+        <div className="min-h-screen bg-cream flex items-center justify-center p-4">
+          <div className="bg-white p-8 rounded-2xl shadow text-center">
+            <p className="mb-4">Not authorized.</p>
+            <button onClick={logout} className="bg-mocha text-cream px-4 py-2 rounded-full">Logout</button>
+          </div>
+        </div>
+      )
+    }
     return (
       <div className="min-h-screen bg-cream flex items-center justify-center p-4">
         <form onSubmit={login} className="bg-white p-8 rounded-2xl shadow w-full max-w-sm">

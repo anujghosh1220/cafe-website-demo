@@ -115,6 +115,7 @@ export default function App() {
         <p className="font-serif text-lg text-cream mb-2">{c.name}</p>
         <p>{c.tagline}</p>
         <p className="mt-4">© {new Date().getFullYear()} {c.name}. All rights reserved.</p>
+        <p className="mt-2"><a href="/admin" className="underline hover:text-champagne">Admin Login</a></p>
       </footer>
     </div>
   )
