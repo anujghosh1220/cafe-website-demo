@@ -9,6 +9,7 @@ export default function Admin() {
   const [section, setSection] = useState('Overview')
 
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null)
+  const [loadingAdmin, setLoadingAdmin] = useState(false)
 
   useEffect(() => {
     if (!supabase) return
@@ -19,8 +20,13 @@ export default function Admin() {
 
   useEffect(() => {
     if (!supabase || !session) { setIsAdmin(null); return }
+    setLoadingAdmin(true)
     supabase.from('admin_profiles').select('user_id').eq('user_id', session.user.id).maybeSingle()
-      .then(({ data }) => setIsAdmin(!!data))
+      .then(({ data, error }) => {
+        if (error) { console.error('admin profile check failed', error.message); setIsAdmin(false) }
+        else setIsAdmin(!!data)
+        setLoadingAdmin(false)
+      })
   }, [session])
 
   async function login(e: React.FormEvent) {
@@ -41,6 +47,9 @@ export default function Admin() {
   }
 
   if (!session || isAdmin === false) {
+    if (session && loadingAdmin) {
+      return <div className="min-h-screen bg-cream flex items-center justify-center"><p>Checking authorization…</p></div>
+    }
     if (session && isAdmin === false) {
       return (
         <div className="min-h-screen bg-cream flex items-center justify-center p-4">
