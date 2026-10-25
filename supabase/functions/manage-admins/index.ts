@@ -1,7 +1,51 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!
-const serviceRole = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || Deno.env.get('SUPABASE_SECRET_KEY') || (Deno.env.get('SUPABASE_SECRET_KEYS') || '').split(',')[0].trim()
+function resolveSecretKey(): string {
+  const legacy = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+  if (legacy) return legacy
+  const single = Deno.env.get('SUPABASE_SECRET_KEY')
+  if (single) return single
+  const raw = Deno.env.get('SUPABASE_SECRET_KEYS')
+  if (raw) {
+    try {
+      const parsed = JSON.parse(raw)
+      if (typeof parsed === 'string') return parsed
+      if (Array.isArray(parsed)) {
+        const first = parsed.find((v) => typeof v === 'string' || (v && typeof v.secret === 'string'))
+        if (typeof first === 'string') return first
+        if (first && typeof first.secret === 'string') return first.secret
+      }
+      if (parsed && typeof parsed === 'object') {
+        for (const value of Object.values(parsed)) {
+          if (typeof value === 'string') return value
+          if (value && typeof (value as any).secret === 'string') return (value as any).secret
+        }
+      }
+    } catch {
+      return raw.split(',')[0].trim()
+    }
+  }
+  return ''
+}
+
+const supabaseUrl = Deno.env.get('SUPABASE_URL')!
+const serviceRole = resolveSecretKey()
+const anonKey = Deno.env.get('SUPABASE_ANON_KEY') || Deno.env.get('SUPABASE_PUBLISHABLE_KEY') || ''
+
+const admin = createClient(supabaseUrl, serviceRole)
+
+... inside handler:
+  if (!serviceRole) {
+    console.error('Missing privileged Supabase secret key')
+    return json({ error: 'Server misconfigured' }, 500)
+  }
+  ...
+  const { data: { user }, error: userErr } = await admin.auth.getUser(token)
+  if (userErr || !user) {
+    console.error('Invalid or missing user token', userErr?.message)
+    return json({ error: 'Unauthorized' }, 401)
+  }
 const anonKey = Deno.env.get('SUPABASE_ANON_KEY') || Deno.env.get('SUPABASE_PUBLISHABLE_KEY') || (Deno.env.get('SUPABASE_PUBLISHABLE_KEYS') || '').split(',')[0].trim()
 
 const admin = createClient(supabaseUrl, serviceRole)
