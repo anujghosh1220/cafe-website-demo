@@ -23,9 +23,9 @@ Deno.serve(async (req) => {
   }
 
   const authHeader = req.headers.get('Authorization') || ''
-  const userClient = createClient(supabaseUrl, anonKey, { global: { headers: { Authorization: authHeader } } })
-  const { data: { user } } = await userClient.auth.getUser()
-  if (!user) return json({ error: 'Unauthorized' }, 401)
+  const token = authHeader.replace(/^Bearer\s+/i, '')
+  const { data: { user }, error: userErr } = await admin.auth.getUser(token)
+  if (userErr || !user) return json({ error: 'Unauthorized' }, 401)
   const { data: profile } = await admin.from('admin_profiles').select('user_id').eq('user_id', user.id).maybeSingle()
   if (!profile) return json({ error: 'Forbidden' }, 403)
 
