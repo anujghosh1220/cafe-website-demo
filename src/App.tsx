@@ -1,16 +1,27 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Menu, X, Phone, MapPin, Clock } from 'lucide-react'
 import { cafeConfig as c } from './config'
+import { supabase } from './supabase'
 
 export default function App() {
   const [open, setOpen] = useState(false)
   const [category, setCategory] = useState('All')
+  const [dbItems, setDbItems] = useState<any[]>([])
+  const [dbCats, setDbCats] = useState<any[]>([])
+  useEffect(() => {
+    if (!supabase) return
+    supabase.from('categories').select('id,name').then(({data})=>setDbCats(data||[]))
+    supabase.from('menu_items').select('id,name,description,price,category_id,image_url,available').eq('available',true).then(({data})=>setDbItems(data||[]))
+  }, [])
   const categories = ['All','Drinks','Hot Drinks','Cold Drinks','Food','Desserts']
-  const filtered = c.menu.filter(m => {
+  const catName = (id:string) => dbCats.find(c=>c.id===id)?.name
+  const filtered = dbItems.filter(m => {
+    const cn = catName(m.category_id) || ''
     if (category === 'All') return true
-    if (category === 'Drinks') return m.category === 'Hot Drinks' || m.category === 'Cold Drinks'
-    return m.category === category
+    if (category === 'Drinks') return cn === 'Hot Drinks' || cn === 'Cold Drinks'
+    return cn === category
   })
+  const menuForRender = dbItems.length ? filtered.map(m=>({name:m.name,desc:m.description,price:`₹${m.price}`,image:m.image_url})) : c.menu
   return (
     <div className="font-sans">
       <nav className="sticky top-0 z-50 bg-mocha text-cream">
@@ -59,7 +70,7 @@ export default function App() {
           ))}
         </div>
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filtered.map(m=>(
+          {menuForRender.map(m=>(
             <div key={m.name} className="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition">
               <img src={m.image} alt={m.name} className="w-full h-48 object-cover" onError={(e)=>{(e.currentTarget as HTMLImageElement).style.display='none'}} />
               <div className="p-4">
