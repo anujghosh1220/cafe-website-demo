@@ -35,18 +35,23 @@ const anonKey = Deno.env.get('SUPABASE_ANON_KEY') || Deno.env.get('SUPABASE_PUBL
 
 const admin = createClient(supabaseUrl, serviceRole)
 
-... inside handler:
+Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { status: 204, headers: corsHeaders })
+  }
+
   if (!serviceRole) {
     console.error('Missing privileged Supabase secret key')
     return json({ error: 'Server misconfigured' }, 500)
   }
-  ...
+
+  const authHeader = req.headers.get('Authorization') || ''
+  const token = authHeader.replace(/^Bearer\s+/i, '')
   const { data: { user }, error: userErr } = await admin.auth.getUser(token)
   if (userErr || !user) {
     console.error('Invalid or missing user token', userErr?.message)
     return json({ error: 'Unauthorized' }, 401)
   }
-const anonKey = Deno.env.get('SUPABASE_ANON_KEY') || Deno.env.get('SUPABASE_PUBLISHABLE_KEY') || (Deno.env.get('SUPABASE_PUBLISHABLE_KEYS') || '').split(',')[0].trim()
 
 const admin = createClient(supabaseUrl, serviceRole)
 
