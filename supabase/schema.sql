@@ -24,4 +24,5 @@ alter table admin_profiles enable row level security;
 create policy "public read categories" on categories for select using (true);
 create policy "public read menu" on menu_items for select using (true);
 create policy "users read own admin profile" on admin_profiles for select using (auth.uid() = user_id);
+create policy "admins read admin profiles" on admin_profiles for select using (exists (select 1 from admin_profiles where user_id = auth.uid()));
 create policy "admins manage menu" on menu_items for all using (exists (select 1 from admin_profiles where user_id = auth.uid()));

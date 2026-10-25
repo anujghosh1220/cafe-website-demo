@@ -19,6 +19,9 @@ export default function Admin() {
   const [loadingData, setLoadingData] = useState(false)
 
   const [newCat, setNewCat] = useState('')
+  const [adminProfiles, setAdminProfiles] = useState<{user_id:string;email:string;created_at:string}[]>([])
+  const [adminEmail, setAdminEmail] = useState('')
+  const [adminPassword, setAdminPassword] = useState('')
   const [editingCat, setEditingCat] = useState<Category | null>(null)
   const [editingItem, setEditingItem] = useState<MenuItem | null>(null)
   const [itemForm, setItemForm] = useState({ name: '', description: '', price: '', category_id: '', image_url: '', available: true })
@@ -44,12 +47,13 @@ export default function Admin() {
   async function loadData() {
     if (!supabase) return
     setLoadingData(true); setDataError('')
-    const [c, m] = await Promise.all([
+    const [c, m, a] = await Promise.all([
       supabase.from('categories').select('id,name').order('name'),
-      supabase.from('menu_items').select('id,name,description,price,category_id,image_url,available').order('name')
+      supabase.from('menu_items').select('id,name,description,price,category_id,image_url,available').order('name'),
+      supabase.from('admin_profiles').select('user_id,email,created_at').order('email')
     ])
-    if (c.error || m.error) setDataError((c.error || m.error)?.message || 'Error')
-    else { setCategories(c.data || []); setItems(m.data || []) }
+    if (c.error || m.error || a.error) setDataError((c.error || m.error || a.error)?.message || 'Error')
+    else { setCategories(c.data || []); setItems(m.data || []); setAdminProfiles(a.data || []) }
     setLoadingData(false)
   }
 
@@ -202,7 +206,19 @@ export default function Admin() {
           {section === 'Manage Admin Users' && (
             <div>
               <h2 className="font-serif text-2xl mb-4">Admin Users</h2>
-              <p className="text-mocha/70">Manage admin accounts via Supabase Auth and admin_profiles. Privileged creation/deletion requires a secure Edge Function.</p>
+              <div className="flex gap-2 mb-4">
+                <input value={adminEmail} onChange={e=>setAdminEmail(e.target.value)} placeholder="Email" className="border p-2 rounded flex-1" />
+                <input type="password" value={adminPassword} onChange={e=>setAdminPassword(e.target.value)} placeholder="Temp password" className="border p-2 rounded flex-1" />
+                <button onClick={async()=>{ if(!supabase) return; const {error}=await supabase.functions.invoke('manage-admins',{body:{action:'create',email:adminEmail,password:adminPassword}}); if(error) setDataError(error.message); else { setAdminEmail(''); setAdminPassword(''); loadData() } }} className="bg-amber text-white px-4 rounded-full">Create</button>
+              </div>
+              <ul className="space-y-2">
+                {adminProfiles.map(p=>(
+                  <li key={p.user_id} className="flex justify-between items-center border p-2 rounded">
+                    <span>{p.email} <span className="text-xs text-mocha/60">{new Date(p.created_at).toLocaleDateString()}</span></span>
+                    <button onClick={async()=>{ if(!supabase) return; if(p.user_id===session.user.id){ alert('Cannot delete yourself'); return } const {error}=await supabase.functions.invoke('manage-admins',{body:{action:'delete',userId:p.user_id}}); if(error) setDataError(error.message); else loadData() }} className="text-sm text-red-600 underline">Delete</button>
+                  </li>
+                ))}
+              </ul>
             </div>
           )}
         </main>
