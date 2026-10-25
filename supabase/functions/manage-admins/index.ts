@@ -6,40 +6,55 @@ const anonKey = Deno.env.get('SUPABASE_ANON_KEY') || Deno.env.get('SUPABASE_PUBL
 
 const admin = createClient(supabaseUrl, serviceRole)
 
+const ALLOWED_ORIGIN = 'https://cafe-website-demo-livid.vercel.app'
+const corsHeaders = {
+  'Access-Control-Allow-Origin': ALLOWED_ORIGIN,
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+}
+
+function json(body: unknown, status = 200) {
+  return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+}
+
 Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { status: 204, headers: corsHeaders })
+  }
+
   const authHeader = req.headers.get('Authorization') || ''
   const userClient = createClient(supabaseUrl, anonKey, { global: { headers: { Authorization: authHeader } } })
   const { data: { user } } = await userClient.auth.getUser()
-  if (!user) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 })
+  if (!user) return json({ error: 'Unauthorized' }, 401)
   const { data: profile } = await admin.from('admin_profiles').select('user_id').eq('user_id', user.id).maybeSingle()
-  if (!profile) return new Response(JSON.stringify({ error: 'Forbidden' }), { status: 403 })
+  if (!profile) return json({ error: 'Forbidden' }, 403)
 
   const body = await req.json().catch(() => ({}))
   const action = body.action
 
   if (action === 'create') {
     const { email, password } = body
-    if (!email || !password) return new Response(JSON.stringify({ error: 'Missing fields' }), { status: 400 })
+    if (!email || !password) return json({ error: 'Missing fields' }, 400)
     const { data: created, error: createErr } = await admin.auth.admin.createUser({ email, password, email_confirm: true })
-    if (createErr) return new Response(JSON.stringify({ error: createErr.message }), { status: 400 })
+    if (createErr) return json({ error: createErr.message }, 400)
     const { error: profErr } = await admin.from('admin_profiles').insert({ user_id: created.user.id, email })
     if (profErr) {
       await admin.auth.admin.deleteUser(created.user.id)
-      return new Response(JSON.stringify({ error: profErr.message }), { status: 400 })
+      return json({ error: profErr.message }, 400)
     }
-    return new Response(JSON.stringify({ ok: true }), { status: 200 })
+    return json({ ok: true }, 200)
   }
 
   if (action === 'delete') {
     const { userId } = body
-    if (!userId) return new Response(JSON.stringify({ error: 'Missing userId' }), { status: 400 })
-    if (userId === user.id) return new Response(JSON.stringify({ error: 'Cannot delete yourself' }), { status: 400 })
+    if (!userId) return json({ error: 'Missing userId' }, 400)
+    if (userId === user.id) return json({ error: 'Cannot delete yourself' }, 400)
     const { count } = await admin.from('admin_profiles').select('*', { count: 'exact', head: true })
-    if ((count || 0) <= 1) return new Response(JSON.stringify({ error: 'Last admin cannot be removed' }), { status: 400 })
+    if ((count || 0) <= 1) return json({ error: 'Last admin cannot be removed' }, 400)
     await admin.from('admin_profiles').delete().eq('user_id', userId)
     await admin.auth.admin.deleteUser(userId)
-    return new Response(JSON.stringify({ ok: true }), { status: 200 })
+    return json({ ok: true }, 200)
   }
 
-  return new Response(JSON.stringify({ error: 'Unknown action' }), { status: 400 })
+  return json({ error: 'Unknown action' }, 400)
 })
