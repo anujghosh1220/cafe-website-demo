@@ -1,6 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
-const supabaseUrl = Deno.env.get('SUPABASE_URL')!
 function resolveSecretKey(): string {
   const legacy = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
   if (legacy) return legacy
@@ -31,27 +30,6 @@ function resolveSecretKey(): string {
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!
 const serviceRole = resolveSecretKey()
-const anonKey = Deno.env.get('SUPABASE_ANON_KEY') || Deno.env.get('SUPABASE_PUBLISHABLE_KEY') || ''
-
-const admin = createClient(supabaseUrl, serviceRole)
-
-Deno.serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { status: 204, headers: corsHeaders })
-  }
-
-  if (!serviceRole) {
-    console.error('Missing privileged Supabase secret key')
-    return json({ error: 'Server misconfigured' }, 500)
-  }
-
-  const authHeader = req.headers.get('Authorization') || ''
-  const token = authHeader.replace(/^Bearer\s+/i, '')
-  const { data: { user }, error: userErr } = await admin.auth.getUser(token)
-  if (userErr || !user) {
-    console.error('Invalid or missing user token', userErr?.message)
-    return json({ error: 'Unauthorized' }, 401)
-  }
 
 const admin = createClient(supabaseUrl, serviceRole)
 
@@ -71,10 +49,18 @@ Deno.serve(async (req) => {
     return new Response(null, { status: 204, headers: corsHeaders })
   }
 
+  if (!serviceRole) {
+    console.error('Missing privileged Supabase secret key')
+    return json({ error: 'Server misconfigured' }, 500)
+  }
+
   const authHeader = req.headers.get('Authorization') || ''
   const token = authHeader.replace(/^Bearer\s+/i, '')
   const { data: { user }, error: userErr } = await admin.auth.getUser(token)
-  if (userErr || !user) return json({ error: 'Unauthorized' }, 401)
+  if (userErr || !user) {
+    console.error('Invalid or missing user token', userErr?.message)
+    return json({ error: 'Unauthorized' }, 401)
+  }
   const { data: profile } = await admin.from('admin_profiles').select('user_id').eq('user_id', user.id).maybeSingle()
   if (!profile) return json({ error: 'Forbidden' }, 403)
 
