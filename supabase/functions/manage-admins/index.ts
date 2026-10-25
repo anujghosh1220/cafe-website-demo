@@ -1,12 +1,14 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!
-const serviceRole = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+const serviceRole = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || Deno.env.get('SUPABASE_SECRET_KEY') || (Deno.env.get('SUPABASE_SECRET_KEYS') || '').split(',')[0].trim()
+const anonKey = Deno.env.get('SUPABASE_ANON_KEY') || Deno.env.get('SUPABASE_PUBLISHABLE_KEY') || (Deno.env.get('SUPABASE_PUBLISHABLE_KEYS') || '').split(',')[0].trim()
+
 const admin = createClient(supabaseUrl, serviceRole)
 
 Deno.serve(async (req) => {
   const authHeader = req.headers.get('Authorization') || ''
-  const userClient = createClient(supabaseUrl, Deno.env.get('SUPABASE_ANON_KEY')!, { global: { headers: { Authorization: authHeader } } })
+  const userClient = createClient(supabaseUrl, anonKey, { global: { headers: { Authorization: authHeader } } })
   const { data: { user } } = await userClient.auth.getUser()
   if (!user) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 })
   const { data: profile } = await admin.from('admin_profiles').select('user_id').eq('user_id', user.id).maybeSingle()
