@@ -4,6 +4,13 @@ import { cafeConfig as c } from './config'
 
 export default function App() {
   const [open, setOpen] = useState(false)
+  const [category, setCategory] = useState('All')
+  const categories = ['All','Drinks','Hot Drinks','Cold Drinks','Food','Desserts']
+  const filtered = c.menu.filter(m => {
+    if (category === 'All') return true
+    if (category === 'Drinks') return m.category === 'Hot Drinks' || m.category === 'Cold Drinks'
+    return m.category === category
+  })
   return (
     <div className="font-sans">
       <nav className="sticky top-0 z-50 bg-mocha text-cream">
@@ -43,9 +50,16 @@ export default function App() {
 
       <section id="menu" className="max-w-6xl mx-auto px-4 py-16">
         <h2 className="font-serif text-3xl md:text-4xl text-mocha mb-2 text-center">Featured Menu</h2>
-        <p className="text-center text-mocha/70 mb-10">A few of our favorites.</p>
+        <p className="text-center text-mocha/70 mb-6">A few of our favorites.</p>
+        <div className="flex flex-wrap gap-2 justify-center mb-8">
+          {categories.map(cat=>(
+            <button key={cat} onClick={()=>setCategory(cat)}
+              className={`px-4 py-2 rounded-full text-sm font-medium transition ${category===cat ? 'bg-mocha text-cream' : 'bg-white text-mocha border border-mocha/20 hover:bg-champagne/40'}`}
+            >{cat}</button>
+          ))}
+        </div>
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {c.menu.map(m=>(
+          {filtered.map(m=>(
             <div key={m.name} className="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition">
               <img src={m.image} alt={m.name} className="w-full h-48 object-cover" onError={(e)=>{(e.currentTarget as HTMLImageElement).style.display='none'}} />
               <div className="p-4">
