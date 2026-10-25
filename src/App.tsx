@@ -28,7 +28,7 @@ export default function App() {
       </nav>
 
       <section id="home" className="relative">
-        <img src={c.hero.image} alt="cafe" className="w-full h-[70vh] object-cover" />
+        <img src={c.hero.image} alt="cafe" className="w-full h-[70vh] object-cover" onError={(e)=>{(e.currentTarget as HTMLImageElement).style.display='none'}} />
         <div className="absolute inset-0 bg-mocha/50 flex items-center">
           <div className="max-w-6xl mx-auto px-4 text-cream">
             <h1 className="font-serif text-4xl md:text-6xl mb-4">{c.hero.headline}</h1>
@@ -47,7 +47,7 @@ export default function App() {
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {c.menu.map(m=>(
             <div key={m.name} className="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition">
-              <img src={m.image} alt={m.name} className="w-full h-48 object-cover" />
+              <img src={m.image} alt={m.name} className="w-full h-48 object-cover" onError={(e)=>{(e.currentTarget as HTMLImageElement).style.display='none'}} />
               <div className="p-4">
                 <div className="flex justify-between items-baseline">
                   <h3 className="font-serif text-xl text-mocha">{m.name}</h3>
@@ -62,7 +62,7 @@ export default function App() {
 
       <section id="about" className="bg-cream py-16">
         <div className="max-w-6xl mx-auto px-4 grid md:grid-cols-2 gap-10 items-center">
-          <img src={c.about.image} alt="about" className="rounded-2xl w-full h-80 object-cover" />
+          <img src={c.about.image} alt="about" className="rounded-2xl w-full h-80 object-cover" onError={(e)=>{(e.currentTarget as HTMLImageElement).style.display='none'}} />
           <div>
             <h2 className="font-serif text-3xl md:text-4xl text-mocha mb-4">{c.about.heading}</h2>
             <p className="text-mocha/80 leading-relaxed">{c.about.text}</p>
@@ -74,7 +74,7 @@ export default function App() {
         <h2 className="font-serif text-3xl md:text-4xl text-mocha mb-8 text-center">Gallery</h2>
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
           {c.gallery.map((g,i)=>(
-            <img key={i} src={g} alt={`gallery ${i+1}`} className="rounded-xl w-full h-48 object-cover hover:scale-[1.02] transition" />
+            <img key={i} src={g} alt={`gallery ${i+1}`} className="rounded-xl w-full h-48 object-cover hover:scale-[1.02] transition" onError={(e)=>{(e.currentTarget as HTMLImageElement).style.display='none'}} />
           ))}
         </div>
       </section>
