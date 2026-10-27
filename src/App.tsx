@@ -116,7 +116,11 @@ export default function App() {
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {displayItems.map(m => (
               <div key={m.id} className="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition">
-                <img src={m.image} alt={m.name} className="w-full h-48 object-cover" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none' }} />
+            {m.image ? (
+              <img src={m.image} alt={m.name} className="w-full h-48 object-cover" loading="lazy" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none' }} />
+            ) : (
+              <div className="w-full h-48 bg-champagne/30 flex items-center justify-center text-mocha/50">No image</div>
+            )}
                 <div className="p-4">
                   <div className="flex justify-between items-baseline">
                     <h3 className="font-serif text-xl text-mocha">{m.name}</h3>
