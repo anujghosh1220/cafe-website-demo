@@ -31,10 +31,10 @@ create index if not exists idx_order_items_order on order_items(order_id);
 alter table orders enable row level security;
 alter table order_items enable row level security;
 
-create policy "chefs read orders" on orders for select using (exists (select 1 from admin_profiles ap where ap.user_id = auth.uid() and ap.role in ('admin','chef')));
-create policy "chefs update orders" on orders for update using (exists (select 1 from admin_profiles ap where ap.user_id = auth.uid() and ap.role in ('admin','chef'))) with check (exists (select 1 from admin_profiles ap where ap.user_id = auth.uid() and ap.role in ('admin','chef')));
+create policy "chefs read orders" on orders for select using (public.is_admin_or_chef());
+create policy "chefs update orders" on orders for update using (public.is_admin_or_chef()) with check (public.is_admin_or_chef());
 create policy "public create orders via rpc" on orders for insert with check (false);
-create policy "chefs read items" on order_items for select using (exists (select 1 from admin_profiles ap where ap.user_id = auth.uid() and ap.role in ('admin','chef')));
+create policy "chefs read items" on order_items for select using (public.is_admin_or_chef());
 create policy "public no direct items" on order_items for insert with check (false);
 
 create or replace function create_order(p_table_number text, p_items jsonb, p_instructions text default null)
