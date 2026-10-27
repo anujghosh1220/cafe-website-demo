@@ -4,8 +4,11 @@ import { supabase, isConfigured } from './supabase'
 type Category = { id: string; name: string }
 type MenuItem = { id: string; name: string; description: string | null; price: number; category_id: string | null; image_url: string | null; available: boolean }
 
+const DEMO = import.meta.env.VITE_DEMO_MODE === 'true'
+
 export default function Admin() {
   const [session, setSession] = useState<any>(null)
+  const [demo, setDemo] = useState(false)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
@@ -29,6 +32,10 @@ export default function Admin() {
   const [itemForm, setItemForm] = useState({ name: '', description: '', price: '', category_id: '', image_url: '', available: true })
 
   useEffect(() => {
+    if (DEMO && localStorage.getItem('demo-admin') === '1') setDemo(true)
+  }, [])
+
+  useEffect(() => {
     if (!supabase) return
     supabase.auth.getSession().then(({ data }) => setSession(data.session))
     const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => setSession(s))
@@ -47,6 +54,12 @@ export default function Admin() {
   }, [session])
 
   async function loadData() {
+    if (DEMO && demo) {
+      setCategories([{id:'1',name:'Hot Drinks'},{id:'2',name:'Cold Drinks'},{id:'3',name:'Food'},{id:'4',name:'Desserts'}])
+      setItems([])
+      setAdminProfiles([{user_id:'demo',email:'demo@velvetbean.com',role:'admin',created_at:new Date().toISOString()}])
+      return
+    }
     if (!supabase) return
     setLoadingData(true); setDataError('')
     const [c, m, a] = await Promise.all([
@@ -59,15 +72,16 @@ export default function Admin() {
     setLoadingData(false)
   }
 
-  useEffect(() => { if (isAdmin) loadData() }, [isAdmin])
+  useEffect(() => { if (isAdmin || (DEMO && demo)) loadData() }, [isAdmin, demo])
 
   async function login(e: React.FormEvent) {
     e.preventDefault()
+    if (DEMO) { localStorage.setItem('demo-admin','1'); setDemo(true); return }
     if (!supabase) return
     const { error } = await supabase.auth.signInWithPassword({ email, password })
     if (error) setError(error.message)
   }
-  async function logout() { if (supabase) await supabase.auth.signOut() }
+  async function logout() { if (DEMO) { localStorage.removeItem('demo-admin'); setDemo(false); return } if (supabase) await supabase.auth.signOut() }
 
   async function addCategory() {
     if (!supabase || !newCat.trim()) return
@@ -109,6 +123,20 @@ export default function Admin() {
     if (!supabase) return
     await supabase.from('menu_items').update({ available: !item.available }).eq('id', item.id)
     loadData()
+  }
+
+  if (DEMO && demo) {
+    return (
+      <div className="min-h-screen bg-cream text-mocha">
+        <header className="bg-mocha text-cream p-4 flex justify-between">
+          <span className="font-serif text-xl">Admin Dashboard <span className="text-xs bg-amber px-2 py-1 rounded ml-2">DEMO MODE</span></span>
+          <button onClick={logout} className="bg-amber text-white px-4 py-1 rounded-full">Logout</button>
+        </header>
+        <div className="max-w-6xl mx-auto p-4">
+          <p className="text-mocha/70">Demo mode: changes are not saved.</p>
+        </div>
+      </div>
+    )
   }
 
   if (!isConfigured) return <div className="min-h-screen bg-cream text-mocha p-8"><h1 className="font-serif text-3xl mb-4">Admin setup required</h1><p>Set env vars.</p></div>
