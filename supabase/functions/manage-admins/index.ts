@@ -61,18 +61,20 @@ Deno.serve(async (req) => {
     console.error('Invalid or missing user token', userErr?.message)
     return json({ error: 'Unauthorized' }, 401)
   }
-  const { data: profile } = await admin.from('admin_profiles').select('user_id').eq('user_id', user.id).maybeSingle()
-  if (!profile) return json({ error: 'Forbidden' }, 403)
+  const { data: profile } = await admin.from('admin_profiles').select('user_id,role').eq('user_id', user.id).maybeSingle()
+  if (!profile || profile.role !== 'admin') return json({ error: 'Forbidden' }, 403)
 
   const body = await req.json().catch(() => ({}))
   const action = body.action
 
   if (action === 'create') {
-    const { email, password } = body
+    const { email, password, role } = body
     if (!email || !password) return json({ error: 'Missing fields' }, 400)
+    const userRole = role === 'chef' ? 'chef' : role === 'admin' ? 'admin' : null
+    if (!userRole) return json({ error: 'Invalid role' }, 400)
     const { data: created, error: createErr } = await admin.auth.admin.createUser({ email, password, email_confirm: true })
     if (createErr) return json({ error: createErr.message }, 400)
-    const { error: profErr } = await admin.from('admin_profiles').insert({ user_id: created.user.id, email })
+    const { error: profErr } = await admin.from('admin_profiles').insert({ user_id: created.user.id, email, role: userRole })
     if (profErr) {
       await admin.auth.admin.deleteUser(created.user.id)
       return json({ error: profErr.message }, 400)
@@ -84,7 +86,7 @@ Deno.serve(async (req) => {
     const { userId } = body
     if (!userId) return json({ error: 'Missing userId' }, 400)
     if (userId === user.id) return json({ error: 'Cannot delete yourself' }, 400)
-    const { count } = await admin.from('admin_profiles').select('*', { count: 'exact', head: true })
+    const { count } = await admin.from('admin_profiles').select('*', { count: 'exact', head: true }).eq('role', 'admin')
     if ((count || 0) <= 1) return json({ error: 'Last admin cannot be removed' }, 400)
     await admin.from('admin_profiles').delete().eq('user_id', userId)
     await admin.auth.admin.deleteUser(userId)

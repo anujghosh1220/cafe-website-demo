@@ -11,6 +11,7 @@ export default function Admin() {
   const [error, setError] = useState('')
   const [section, setSection] = useState('Overview')
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null)
+  const [currentRole, setCurrentRole] = useState<string | null>(null)
   const [loadingAdmin, setLoadingAdmin] = useState(false)
 
   const [categories, setCategories] = useState<Category[]>([])
@@ -19,9 +20,10 @@ export default function Admin() {
   const [loadingData, setLoadingData] = useState(false)
 
   const [newCat, setNewCat] = useState('')
-  const [adminProfiles, setAdminProfiles] = useState<{user_id:string;email:string;created_at:string}[]>([])
+  const [adminProfiles, setAdminProfiles] = useState<{user_id:string;email:string;role:string;created_at:string}[]>([])
   const [adminEmail, setAdminEmail] = useState('')
   const [adminPassword, setAdminPassword] = useState('')
+  const [adminRole, setAdminRole] = useState('admin')
   const [editingCat, setEditingCat] = useState<Category | null>(null)
   const [editingItem, setEditingItem] = useState<MenuItem | null>(null)
   const [itemForm, setItemForm] = useState({ name: '', description: '', price: '', category_id: '', image_url: '', available: true })
@@ -36,10 +38,10 @@ export default function Admin() {
   useEffect(() => {
     if (!supabase || !session) { setIsAdmin(null); return }
     setLoadingAdmin(true)
-    supabase.from('admin_profiles').select('user_id').eq('user_id', session.user.id).maybeSingle()
+    supabase.from('admin_profiles').select('user_id,role').eq('user_id', session.user.id).maybeSingle()
       .then(({ data, error }) => {
         if (error) { console.error('admin profile check failed', error.message); setIsAdmin(false) }
-        else setIsAdmin(!!data)
+        else { setIsAdmin(!!data); setCurrentRole(data?.role || null) }
         setLoadingAdmin(false)
       })
   }, [session])
@@ -50,7 +52,7 @@ export default function Admin() {
     const [c, m, a] = await Promise.all([
       supabase.from('categories').select('id,name').order('name'),
       supabase.from('menu_items').select('id,name,description,price,category_id,image_url,available').order('name'),
-      supabase.from('admin_profiles').select('user_id,email,created_at').order('email')
+      supabase.from('admin_profiles').select('user_id,email,role,created_at').order('email')
     ])
     if (c.error || m.error || a.error) setDataError((c.error || m.error || a.error)?.message || 'Error')
     else { setCategories(c.data || []); setItems(m.data || []); setAdminProfiles(a.data || []) }
@@ -116,6 +118,21 @@ export default function Admin() {
     return <div className="min-h-screen bg-cream flex items-center justify-center p-4"><form onSubmit={login} className="bg-white p-8 rounded-2xl shadow w-full max-w-sm"><h1 className="font-serif text-2xl text-mocha mb-4">Admin Login</h1><input value={email} onChange={e=>setEmail(e.target.value)} placeholder="Email" className="w-full border p-2 rounded mb-3" /><input type="password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="Password" className="w-full border p-2 rounded mb-3" />{error && <p className="text-red-600 text-sm mb-3">{error}</p>}<button className="w-full bg-mocha text-cream py-2 rounded-full">Sign In</button></form></div>
   }
 
+  if (currentRole === 'chef') {
+    return (
+      <div className="min-h-screen bg-cream text-mocha">
+        <header className="bg-mocha text-cream p-4 flex justify-between">
+          <span className="font-serif text-xl">Chef Dashboard</span>
+          <button onClick={logout} className="bg-amber text-white px-4 py-1 rounded-full">Logout</button>
+        </header>
+        <main className="max-w-6xl mx-auto p-6">
+          <h2 className="font-serif text-2xl mb-2">Kitchen</h2>
+          <p className="text-mocha/70">No order backend is available in this project yet.</p>
+        </main>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-cream text-mocha">
       <header className="bg-mocha text-cream p-4 flex justify-between">
@@ -124,7 +141,7 @@ export default function Admin() {
       </header>
       <div className="max-w-6xl mx-auto p-4 grid md:grid-cols-4 gap-4">
         <aside className="space-y-2">
-          {['Overview','Manage Menu','Manage Categories','Manage Admin Users'].map(s=>(
+          {['Overview','Manage Menu','Manage Categories','Manage Users'].map(s=>(
             <button key={s} onClick={()=>setSection(s)} className={`block w-full text-left px-3 py-2 rounded ${section===s?'bg-mocha text-cream':'hover:bg-champagne/40'}`}>{s}</button>
           ))}
         </aside>
@@ -203,18 +220,22 @@ export default function Admin() {
               {items.length === 0 && <p className="text-mocha/60">No items.</p>}
             </div>
           )}
-          {section === 'Manage Admin Users' && (
+          {section === 'Manage Users' && (
             <div>
-              <h2 className="font-serif text-2xl mb-4">Admin Users</h2>
+              <h2 className="font-serif text-2xl mb-4">Manage Users</h2>
               <div className="flex gap-2 mb-4">
                 <input value={adminEmail} onChange={e=>setAdminEmail(e.target.value)} placeholder="Email" className="border p-2 rounded flex-1" />
                 <input type="password" value={adminPassword} onChange={e=>setAdminPassword(e.target.value)} placeholder="Temp password" className="border p-2 rounded flex-1" />
-                <button onClick={async()=>{ if(!supabase) return; const {error}=await supabase.functions.invoke('manage-admins',{body:{action:'create',email:adminEmail,password:adminPassword}}); if(error) setDataError(error.message); else { setAdminEmail(''); setAdminPassword(''); loadData() } }} className="bg-amber text-white px-4 rounded-full">Create</button>
+                <select value={adminRole} onChange={e=>setAdminRole(e.target.value)} className="border p-2 rounded">
+                  <option value="admin">Admin</option>
+                  <option value="chef">Chef</option>
+                </select>
+                <button onClick={async()=>{ if(!supabase) return; const {error}=await supabase.functions.invoke('manage-admins',{body:{action:'create',email:adminEmail,password:adminPassword,role:adminRole}}); if(error) setDataError(error.message); else { setAdminEmail(''); setAdminPassword(''); setAdminRole('admin'); loadData() } }} className="bg-amber text-white px-4 rounded-full">Create</button>
               </div>
               <ul className="space-y-2">
                 {adminProfiles.map(p=>(
                   <li key={p.user_id} className="flex justify-between items-center border p-2 rounded">
-                    <span>{p.email} <span className="text-xs text-mocha/60">{new Date(p.created_at).toLocaleDateString()}</span></span>
+                    <span>{p.email} <span className="text-xs text-mocha/60">({p.role})</span></span>
                     <button onClick={async()=>{ if(!supabase) return; if(p.user_id===session.user.id){ alert('Cannot delete yourself'); return } const {error}=await supabase.functions.invoke('manage-admins',{body:{action:'delete',userId:p.user_id}}); if(error) setDataError(error.message); else loadData() }} className="text-sm text-red-600 underline">Delete</button>
                   </li>
                 ))}

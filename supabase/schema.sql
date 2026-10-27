@@ -13,7 +13,8 @@ create table if not exists menu_items (
   available boolean default true,
   created_at timestamptz default now()
 );
-create table if not exists admin_profiles (
+alter table admin_profiles add column if not exists role text not null default 'admin' check (role in ('admin','chef'));
+update admin_profiles set role = 'admin' where role is null;
   user_id uuid primary key references auth.users(id),
   email text not null,
   created_at timestamptz default now()
