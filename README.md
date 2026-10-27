@@ -1,32 +1,63 @@
-# React + TypeScript + Vite
+# The Velvet Bean — Café Website Demo
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+## Stack
+React, Vite, TypeScript, Tailwind CSS, Supabase.
 
-Currently, two official plugins are available:
+## Live
+https://cafe-website-demo-livid.vercel.app/
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## GitHub
+https://github.com/anujghosh1220/cafe-website-demo
 
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the Oxlint configuration
-
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
-
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
+## Environment
+Create `.env` in project root:
+```
+VITE_SUPABASE_URL=https://jqvaylrcpizwramllaft.supabase.co
+VITE_SUPABASE_ANON_KEY=sb_publishable_Mug8QsfkAdNW3Akdv6nfHQ_O0XbpnVE
 ```
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+## Admin credentials (initial setup)
+- Email: admin123@gmail.com
+- Password: test123
+
+Additional admin used during setup:
+- Email: anujghosh588@gmail.com
+
+Admin login URL: /admin
+
+## Database schema
+Tables:
+- categories (id, name, created_at)
+- menu_items (id, name, description, price, category_id, image_url, available, created_at)
+- admin_profiles (user_id, email, role, created_at)
+
+Roles: admin, chef.
+
+RLS: public read categories/menu_items; admins manage; admin_profiles readable by self/admins.
+
+## SQL files
+- supabase/schema.sql — schema + RLS
+- supabase/seed.sql — initial categories
+- supabase/seed_menu_items.sql — 70 items + images
+- supabase/update_menu_images.sql — image repair
+
+## Edge Function
+- supabase/functions/manage-admins/index.ts
+- Deploy: `supabase functions deploy manage-admins`
+- Secrets: SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY (or secret key variants)
+
+## Missing / manual steps
+- Run schema.sql and seed scripts in Supabase SQL Editor
+- Create initial admin user in Supabase Auth and admin_profiles row
+- Deploy edge function and set secrets
+- Configure Vercel env vars
+- Chef order backend not implemented (no orders table)
+- Admin user management requires deployed function
+- Image URLs need SQL execution to populate
+- Admin password reset if invalid credentials
+
+## Commands
+```
+npm install
+npm run build
+```
