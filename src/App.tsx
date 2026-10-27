@@ -10,6 +10,31 @@ export default function App() {
   const [dbItems, setDbItems] = useState<any[]>([])
   const [dbCats, setDbCats] = useState<any[]>([])
   const [scrolled, setScrolled] = useState(false)
+  const [cart, setCart] = useState<any[]>([])
+  const [table, setTable] = useState('')
+  const [instructions, setInstructions] = useState('')
+  const [placing, setPlacing] = useState(false)
+  const [orderNumber, setOrderNumber] = useState<string | null>(null)
+  const [checkoutOpen, setCheckoutOpen] = useState(false)
+
+  function addToCart(m: any) {
+    setCart(prev => {
+      const ex = prev.find(p => p.id === m.id)
+      if (ex) return prev.map(p => p.id === m.id ? { ...p, qty: p.qty + 1 } : p)
+      return [...prev, { id: m.id, name: m.name, price: parseFloat(String(m.price).replace(/[^\d.]/g, '')), qty: 1 }]
+    })
+  }
+  const total = cart.reduce((s, i) => s + i.price * i.qty, 0)
+  async function placeOrder() {
+    if (!supabase || !table.trim()) return
+    setPlacing(true)
+    const items = cart.map(i => ({ menu_item_id: i.id, quantity: i.qty }))
+    const { data, error } = await supabase.rpc('create_order', { p_table_number: table.trim(), p_items: items, p_instructions: instructions || null })
+    setPlacing(false)
+    if (error) { alert(error.message); return }
+    setOrderNumber(String(data))
+    setCart([])
+  }
 
   useEffect(() => {
     if (!supabase) return
@@ -127,6 +152,7 @@ export default function App() {
                     <span className="text-amber font-semibold">{m.price}</span>
                   </div>
                   <p className="text-sm text-mocha/70 mt-1">{m.desc}</p>
+                  <button onClick={() => addToCart(m)} className="mt-3 text-sm bg-amber text-white px-3 py-1 rounded-full">Add</button>
                 </div>
               </div>
             ))}
@@ -162,8 +188,28 @@ export default function App() {
         </div>
       </section>
 
+      {cart.length > 0 && (
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 bg-mocha text-cream px-6 py-3 rounded-full shadow-lg flex gap-4 items-center">
+          <span>{cart.length} items · ₹{total}</span>
+          <button onClick={() => setCheckoutOpen(true)} className="bg-amber text-white px-4 py-1 rounded-full">Checkout</button>
+        </div>
+      )}
+      {checkoutOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-md">
+            <h3 className="font-serif text-2xl mb-4">Checkout</h3>
+            <input value={table} onChange={e => setTable(e.target.value)} placeholder="Table number" className="w-full border p-2 rounded mb-3" />
+            <textarea value={instructions} onChange={e => setInstructions(e.target.value)} placeholder="Special instructions" className="w-full border p-2 rounded mb-3" />
+            <p className="mb-3 font-semibold">Total: ₹{total}</p>
+            <div className="flex gap-2">
+              <button onClick={placeOrder} disabled={placing || !table.trim()} className="bg-amber text-white px-4 py-2 rounded-full disabled:opacity-50">{placing ? 'Placing...' : 'Place Order'}</button>
+              <button onClick={() => setCheckoutOpen(false)} className="px-4 py-2 rounded-full border">Cancel</button>
+            </div>
+            {orderNumber && <p className="mt-3 text-green-700">Order placed: {orderNumber}</p>}
+          </div>
+        </div>
+      )}
       <footer className="bg-mocha/90 text-cream/80 py-8 text-center text-sm">
-        <p className="font-serif text-lg text-cream mb-2">The Velvet Bean</p>
         <p>{c.tagline}</p>
         <p className="mt-4">© {new Date().getFullYear()} The Velvet Bean. All rights reserved.</p>
         <p className="mt-2"><a href="/admin" className="underline hover:text-champagne">Admin Login</a></p>
