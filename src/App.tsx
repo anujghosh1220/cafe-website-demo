@@ -24,6 +24,15 @@ export default function App() {
   }, [])
 
   const catName = (id: string) => dbCats.find(c => c.id === id)?.name
+  const ALIASES: Record<string, string[]> = {
+    'velvet cappuccino': ['coffee', 'espresso', 'milk', 'foam'],
+    'slow pour over': ['coffee', 'pour over', 'filter coffee'],
+    'rose masala chai': ['tea', 'chai', 'rose'],
+    'signature velvet latte': ['coffee', 'latte', 'espresso', 'caramel'],
+    'iced americano': ['coffee', 'iced coffee', 'espresso', 'cold coffee', 'americano'],
+    'almond croissant': ['dessert', 'pastry', 'croissant', 'almond'],
+    'avocado toast': ['food', 'toast', 'avocado', 'sandwich'],
+  }
   const categories = ['All', 'Drinks', ...dbCats.map(c => c.name).filter(n => n !== 'Drinks')]
   const filtered = useMemo(() => {
     const items = dbItems.length ? dbItems : c.menu.map((m, i) => ({ id: String(i), name: m.name, description: m.desc, price: parseFloat(m.price.replace(/[^\d.]/g, '')), category_id: null, image_url: m.image, available: true, _cat: m.category }))
@@ -34,14 +43,19 @@ export default function App() {
       else if (cn !== category) return false
       const q = query.trim().toLowerCase()
       if (!q) return true
-      return (m.name || '').toLowerCase().includes(q) || (m.description || '').toLowerCase().includes(q)
+      const name = (m.name || '').toLowerCase()
+      const desc = (m.description || m.desc || '').toLowerCase()
+      const aliases = ALIASES[name] || []
+      const haystack = [name, desc, cn.toLowerCase(), ...aliases.map(a => a.toLowerCase())].join(' ')
+      const terms = q.split(/\s+/).filter(Boolean)
+      return terms.every(t => haystack.includes(t))
     })
   }, [dbItems, dbCats, category, query])
 
   const displayItems = filtered.map(m => ({
     id: m.id,
     name: m.name,
-    desc: m.description,
+    desc: m.description || m.desc,
     price: dbItems.length ? `₹${m.price}` : m.price,
     image: dbItems.length ? m.image_url : m.image,
   }))
