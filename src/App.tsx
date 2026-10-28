@@ -56,7 +56,8 @@ export default function App() {
     id: m.id,
     name: m.name,
     desc: m.description || m.desc,
-    price: dbItems.length ? `₹${m.price}` : m.price,
+    price: `₹${m.price}`,
+    rawPrice: m.price,
     image: dbItems.length ? m.image_url : m.image,
   }))
 
@@ -127,7 +128,7 @@ export default function App() {
                     <span className="text-amber font-semibold">{m.price}</span>
                   </div>
                   <p className="text-sm text-mocha/70 mt-1">{m.desc}</p>
-                  <button onClick={() => addToCart(m)} className="mt-3 text-sm bg-amber text-white px-3 py-1 rounded-full">Add</button>
+                  <button onClick={() => addToCart({ id: m.id, name: m.name, price: m.rawPrice, image: m.image, description: m.desc })} className="mt-3 text-sm bg-amber text-white px-3 py-1 rounded-full">Add</button>
                 </div>
               </div>
             ))}
