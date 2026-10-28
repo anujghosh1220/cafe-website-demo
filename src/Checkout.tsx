@@ -16,7 +16,7 @@ export default function Checkout() {
     if (!supabase) { setError('Backend not configured'); return }
     setPlacing(true); setError('')
     const items = cart.map((i: any) => ({ menu_item_id: i.id, quantity: i.qty }))
-    const { data, error: err } = await supabase.rpc('create_order', { p_table_number: table, p_items: items, p_instructions: instructions || null })
+    const { data, error: err } = await supabase.rpc('create_order', { p_table_number: table, p_items: items, p_instructions: instructions || null, p_customer_name: name || null })
     setPlacing(false)
     if (err) { setError(err.message); return }
     setOrderNumber(String(data))

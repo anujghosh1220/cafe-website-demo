@@ -46,7 +46,7 @@ export default function Chef() {
     if (!supabase) return
     const next = status === 'new' ? 'preparing' : status === 'preparing' ? 'ready' : status === 'ready' ? 'completed' : null
     if (!next) return
-    await supabase.from('orders').update({ status: next, updated_at: new Date().toISOString() }).eq('id', id)
+    await supabase.rpc('advance_order_status', { p_order_id: id, p_status: next })
     load()
   }
 

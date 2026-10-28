@@ -91,7 +91,7 @@ create policy "no delete orders" on orders for delete using (false);
 create policy "staff read order items" on order_items for select using (public.is_admin_or_chef());
 create policy "no direct insert items" on order_items for insert with check (false);
 
-create or replace function public.create_order(p_table_number text, p_items jsonb, p_instructions text default null)
+create or replace function public.create_order(p_table_number text, p_items jsonb, p_instructions text default null, p_customer_name text default null)
 returns text language plpgsql security definer set search_path = public as $$
 declare
   v_order_id uuid;
@@ -108,7 +108,7 @@ begin
     raise exception 'No items';
   end if;
   v_number := 'ORD-' || lpad((floor(random()*999999))::text, 6, '0');
-  insert into orders (order_number, table_number, special_instructions, total) values (v_number, p_table_number, p_instructions, 0) returning id into v_order_id;
+  insert into orders (order_number, table_number, special_instructions, customer_name, total) values (v_number, p_table_number, p_instructions, p_customer_name, 0) returning id into v_order_id;
   for v_item in select * from jsonb_array_elements(p_items) loop
     v_qty := (v_item->>'quantity')::int;
     if v_qty is null or v_qty <= 0 or v_qty > 20 then raise exception 'Invalid quantity'; end if;
@@ -123,7 +123,7 @@ begin
 end;
 $$;
 
-grant execute on function public.create_order(text, jsonb, text) to anon, authenticated;
+grant execute on function public.create_order(text, jsonb, text, text) to anon, authenticated;
 
 create or replace function public.advance_order_status(p_order_id uuid, p_status text)
 returns void language plpgsql security definer set search_path = public as $$
