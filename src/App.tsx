@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo } from 'react'
 import { Menu, X, Phone, MapPin, Clock, Search } from 'lucide-react'
 import { cafeConfig as c } from './config'
-import { supabase } from './supabase'
+import { demoMenu, demoCategories } from './demoMenu'
+import { useCart } from './CartContext'
 
 export default function App() {
   const [open, setOpen] = useState(false)
@@ -11,36 +12,18 @@ export default function App() {
   const [dbCats, setDbCats] = useState<any[]>([])
   const [scrolled, setScrolled] = useState(false)
   const [cart, setCart] = useState<any[]>([])
-  const [table, setTable] = useState('')
-  const [instructions, setInstructions] = useState('')
-  const [placing, setPlacing] = useState(false)
-  const [orderNumber, setOrderNumber] = useState<string | null>(null)
-  const [checkoutOpen, setCheckoutOpen] = useState(false)
 
   function addToCart(m: any) {
     setCart(prev => {
       const ex = prev.find(p => p.id === m.id)
-      const next = ex ? prev.map(p => p.id === m.id ? { ...p, qty: p.qty + 1 } : p) : [...prev, { id: m.id, name: m.name, price: parseFloat(String(m.price).replace(/[^\d.]/g, '')), qty: 1 }]
-      localStorage.setItem('velvet_cart', JSON.stringify(next))
-      return next
+      if (ex) return prev.map(p => p.id === m.id ? { ...p, qty: p.qty + 1 } : p)
+      return [...prev, { id: m.id, name: m.name, price: parseFloat(String(m.price).replace(/[^\d.]/g, '')), qty: 1 }]
     })
   }
-  const total = cart.reduce((s, i) => s + i.price * i.qty, 0)
-  async function placeOrder() {
-    if (!supabase || !table.trim()) return
-    setPlacing(true)
-    const items = cart.map(i => ({ menu_item_id: i.id, quantity: i.qty }))
-    const { data, error } = await supabase.rpc('create_order', { p_table_number: table.trim(), p_items: items, p_instructions: instructions || null })
-    setPlacing(false)
-    if (error) { alert(error.message); return }
-    setOrderNumber(String(data))
-    setCart([])
-  }
-
+  const { count } = useCart()
   useEffect(() => {
-    if (!supabase) return
-    supabase.from('categories').select('id,name').then(({data})=>setDbCats(data||[]))
-    supabase.from('menu_items').select('id,name,description,price,category_id,image_url,available').eq('available',true).then(({data})=>setDbItems(data||[]))
+    setDbCats(demoCategories.map((n, i) => ({ id: String(i), name: n })))
+    setDbItems(demoMenu.map(m => ({ id: m.id, name: m.name, description: m.description, price: m.price, category_id: String(demoCategories.indexOf(m.category)), image_url: m.image, available: m.available, _cat: m.category })))
   }, [])
 
   useEffect(() => {
@@ -95,7 +78,7 @@ export default function App() {
             {['Home','Menu','Our Story','Visit Us'].map(l => (
               <a key={l} href={`#${l.toLowerCase().replace(' ', '-')}`} className="hover:text-champagne transition">{l}</a>
             ))}
-            <a href="/cart" className="relative hover:text-champagne transition">Cart</a>
+            <a href="/cart" className="relative hover:text-champagne transition">Cart{count > 0 && <span className="ml-1 bg-amber text-white text-xs px-2 py-0.5 rounded-full">{count}</span>}</a>
           </div>
           <button className="md:hidden" onClick={() => setOpen(!open)} aria-label="menu">{open ? <X /> : <Menu />}</button>
         </div>
@@ -191,23 +174,8 @@ export default function App() {
 
       {cart.length > 0 && (
         <div className="fixed bottom-4 left-1/2 -translate-x-1/2 bg-mocha text-cream px-6 py-3 rounded-full shadow-lg flex gap-4 items-center">
-          <span>{cart.length} items · ₹{total}</span>
-          <button onClick={() => setCheckoutOpen(true)} className="bg-amber text-white px-4 py-1 rounded-full">Checkout</button>
-        </div>
-      )}
-      {checkoutOpen && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-2xl p-6 w-full max-w-md">
-            <h3 className="font-serif text-2xl mb-4">Checkout</h3>
-            <input value={table} onChange={e => setTable(e.target.value)} placeholder="Table number" className="w-full border p-2 rounded mb-3" />
-            <textarea value={instructions} onChange={e => setInstructions(e.target.value)} placeholder="Special instructions" className="w-full border p-2 rounded mb-3" />
-            <p className="mb-3 font-semibold">Total: ₹{total}</p>
-            <div className="flex gap-2">
-              <button onClick={placeOrder} disabled={placing || !table.trim()} className="bg-amber text-white px-4 py-2 rounded-full disabled:opacity-50">{placing ? 'Placing...' : 'Place Order'}</button>
-              <button onClick={() => setCheckoutOpen(false)} className="px-4 py-2 rounded-full border">Cancel</button>
-            </div>
-            {orderNumber && <p className="mt-3 text-green-700">Order placed: {orderNumber}</p>}
-          </div>
+          <span>{cart.length} items</span>
+          <a href="/cart" className="bg-amber text-white px-4 py-1 rounded-full">View Cart</a>
         </div>
       )}
       <footer className="bg-mocha/90 text-cream/80 py-8 text-center text-sm">
