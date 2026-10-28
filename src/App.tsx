@@ -11,16 +11,7 @@ export default function App() {
   const [dbItems, setDbItems] = useState<any[]>([])
   const [dbCats, setDbCats] = useState<any[]>([])
   const [scrolled, setScrolled] = useState(false)
-  const [cart, setCart] = useState<any[]>([])
-
-  function addToCart(m: any) {
-    setCart(prev => {
-      const ex = prev.find(p => p.id === m.id)
-      if (ex) return prev.map(p => p.id === m.id ? { ...p, qty: p.qty + 1 } : p)
-      return [...prev, { id: m.id, name: m.name, price: parseFloat(String(m.price).replace(/[^\d.]/g, '')), qty: 1 }]
-    })
-  }
-  const { count } = useCart()
+  const { cart, addToCart, count } = useCart()
   useEffect(() => {
     setDbCats(demoCategories.map((n, i) => ({ id: String(i), name: n })))
     setDbItems(demoMenu.map(m => ({ id: m.id, name: m.name, description: m.description, price: m.price, category_id: String(demoCategories.indexOf(m.category)), image_url: m.image, available: m.available, _cat: m.category })))
