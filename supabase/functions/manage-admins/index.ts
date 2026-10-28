@@ -34,27 +34,31 @@ const serviceRole = resolveSecretKey()
 const admin = createClient(supabaseUrl, serviceRole)
 
 const ALLOWED_ORIGINS = ['https://cafe-website-demo-livid.vercel.app', 'http://localhost:5173']
-const origin = req.headers.get('Origin') || ''
-const corsOrigin = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0]
-const corsHeaders = {
-  'Access-Control-Allow-Origin': corsOrigin,
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Vary': 'Origin',
+
+function getCorsHeaders(req: Request) {
+  const origin = req.headers.get('Origin') || ''
+  const corsOrigin = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0]
+  return {
+    'Access-Control-Allow-Origin': corsOrigin,
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Vary': 'Origin',
+  }
 }
 
-function json(body: unknown, status = 200) {
+function json(req: Request, body: unknown, status = 200) {
+  const corsHeaders = getCorsHeaders(req)
   return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
 }
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
-    return new Response(null, { status: 204, headers: corsHeaders })
+    return new Response(null, { status: 204, headers: getCorsHeaders(req) })
   }
 
   if (!serviceRole) {
     console.error('Missing privileged Supabase secret key')
-    return json({ error: 'Server misconfigured' }, 500)
+    return json(req, { error: 'Server misconfigured' }, 500)
   }
 
   const authHeader = req.headers.get('Authorization') || ''
@@ -62,40 +66,41 @@ Deno.serve(async (req) => {
   const { data: { user }, error: userErr } = await admin.auth.getUser(token)
   if (userErr || !user) {
     console.error('Invalid or missing user token', userErr?.message)
-    return json({ error: 'Unauthorized' }, 401)
+    return json(req, { error: 'Unauthorized' }, 401)
   }
   const { data: profile } = await admin.from('admin_profiles').select('user_id,role').eq('user_id', user.id).maybeSingle()
-  if (!profile || profile.role !== 'admin') return json({ error: 'Forbidden' }, 403)
+  if (!profile || profile.role !== 'admin') return json(req, { error: 'Forbidden' }, 403)
 
   const body = await req.json().catch(() => ({}))
   const action = body.action
 
   if (action === 'create') {
     const { email, password, role } = body
-    if (!email || !password) return json({ error: 'Missing fields' }, 400)
-    if (typeof email !== 'string' || !email.includes('@')) return json({ error: 'Invalid email' }, 400)
-    if (typeof password !== 'string' || password.length < 6) return json({ error: 'Invalid password' }, 400)
+    if (!email || !password) return json(req, { error: 'Missing fields' }, 400)
+    if (typeof email !== 'string' || !email.includes('@')) return json(req, { error: 'Invalid email' }, 400)
+    if (typeof password !== 'string' || password.length < 6) return json(req, { error: 'Invalid password' }, 400)
     const { data: created, error: createErr } = await admin.auth.admin.createUser({ email, password, email_confirm: true })
-    if (createErr) return json({ error: createErr.message }, 400)
+    if (createErr) return json(req, { error: createErr.message }, 400)
     const { error: profErr } = await admin.from('admin_profiles').insert({ user_id: created.user.id, email, role: 'chef' })
     if (profErr) {
       await admin.auth.admin.deleteUser(created.user.id)
-      return json({ error: profErr.message }, 400)
+      return json(req, { error: profErr.message }, 400)
     }
-    return json({ ok: true }, 200)
+    return json(req, { ok: true }, 200)
   }
 
   if (action === 'delete') {
     const { userId } = body
-    if (!userId) return json({ error: 'Missing userId' }, 400)
-    if (userId === user.id) return json({ error: 'Cannot delete yourself' }, 400)
+    if (!userId) return json(req, { error: 'Missing userId' }, 400)
+    if (userId === user.id) return json(req, { error: 'Cannot delete yourself' }, 400)
     const { count } = await admin.from('admin_profiles').select('*', { count: 'exact', head: true }).eq('role', 'admin')
-    if ((count || 0) <= 1) return json({ error: 'Last admin cannot be removed' }, 400)
+    if ((count || 0) <= 1) return json(req, { error: 'Last admin cannot be removed' }, 400)
     await admin.from('admin_profiles').delete().eq('user_id', userId)
     await admin.auth.admin.deleteUser(userId)
-    return json({ ok: true }, 200)
+    return json(req, { ok: true }, 200)
   }
 
-  return json({ error: 'Unknown action' }, 400)
+  return json(req, { error: 'Unknown action' }, 400)
 })
+
 
