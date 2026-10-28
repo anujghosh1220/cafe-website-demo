@@ -20,8 +20,9 @@ export default function App() {
   function addToCart(m: any) {
     setCart(prev => {
       const ex = prev.find(p => p.id === m.id)
-      if (ex) return prev.map(p => p.id === m.id ? { ...p, qty: p.qty + 1 } : p)
-      return [...prev, { id: m.id, name: m.name, price: parseFloat(String(m.price).replace(/[^\d.]/g, '')), qty: 1 }]
+      const next = ex ? prev.map(p => p.id === m.id ? { ...p, qty: p.qty + 1 } : p) : [...prev, { id: m.id, name: m.name, price: parseFloat(String(m.price).replace(/[^\d.]/g, '')), qty: 1 }]
+      localStorage.setItem('velvet_cart', JSON.stringify(next))
+      return next
     })
   }
   const total = cart.reduce((s, i) => s + i.price * i.qty, 0)
@@ -94,7 +95,7 @@ export default function App() {
             {['Home','Menu','Our Story','Visit Us'].map(l => (
               <a key={l} href={`#${l.toLowerCase().replace(' ', '-')}`} className="hover:text-champagne transition">{l}</a>
             ))}
-            <a href="#menu" className="bg-amber text-white px-5 py-2 rounded-full font-medium hover:opacity-90 transition">Explore Menu</a>
+            <a href="/cart" className="relative hover:text-champagne transition">Cart</a>
           </div>
           <button className="md:hidden" onClick={() => setOpen(!open)} aria-label="menu">{open ? <X /> : <Menu />}</button>
         </div>
