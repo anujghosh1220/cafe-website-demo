@@ -29,6 +29,7 @@ export default function Checkout() {
 
   return (
     <div className="min-h-screen bg-cream text-mocha p-6 max-w-3xl mx-auto">
+      <a href="/cart" className="inline-block mb-4 text-mocha/70 hover:text-mocha">← Back to Cart</a>
       <h1 className="font-serif text-3xl mb-6">Checkout</h1>
       {error && <p className="text-red-600 mb-3">{error}</p>}
       <div className="bg-white rounded-2xl p-4 shadow mb-4">

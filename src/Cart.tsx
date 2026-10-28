@@ -7,13 +7,14 @@ export default function Cart() {
       <div className="min-h-screen bg-cream text-mocha flex items-center justify-center p-8">
         <div className="text-center">
           <h1 className="font-serif text-3xl mb-4">Your cart is empty</h1>
-          <a href="/" className="bg-amber text-white px-6 py-3 rounded-full">Return to menu</a>
+          <a href="/#menu" className="bg-amber text-white px-6 py-3 rounded-full">Return to menu</a>
         </div>
       </div>
     )
   }
   return (
     <div className="min-h-screen bg-cream text-mocha p-6">
+      <a href="/#menu" className="inline-block mb-4 text-mocha/70 hover:text-mocha">← Back to Menu</a>
       <h1 className="font-serif text-3xl mb-6">Cart</h1>
       <div className="space-y-4">
         {cart.map((i: any) => (
