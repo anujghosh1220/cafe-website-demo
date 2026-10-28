@@ -33,11 +33,14 @@ const serviceRole = resolveSecretKey()
 
 const admin = createClient(supabaseUrl, serviceRole)
 
-const ALLOWED_ORIGIN = 'https://cafe-website-demo-livid.vercel.app'
+const ALLOWED_ORIGINS = ['https://cafe-website-demo-livid.vercel.app', 'http://localhost:5173']
+const origin = req.headers.get('Origin') || ''
+const corsOrigin = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0]
 const corsHeaders = {
-  'Access-Control-Allow-Origin': ALLOWED_ORIGIN,
+  'Access-Control-Allow-Origin': corsOrigin,
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Vary': 'Origin',
 }
 
 function json(body: unknown, status = 200) {
@@ -70,11 +73,11 @@ Deno.serve(async (req) => {
   if (action === 'create') {
     const { email, password, role } = body
     if (!email || !password) return json({ error: 'Missing fields' }, 400)
-    const userRole = role === 'chef' ? 'chef' : role === 'admin' ? 'admin' : null
-    if (!userRole) return json({ error: 'Invalid role' }, 400)
+    if (typeof email !== 'string' || !email.includes('@')) return json({ error: 'Invalid email' }, 400)
+    if (typeof password !== 'string' || password.length < 6) return json({ error: 'Invalid password' }, 400)
     const { data: created, error: createErr } = await admin.auth.admin.createUser({ email, password, email_confirm: true })
     if (createErr) return json({ error: createErr.message }, 400)
-    const { error: profErr } = await admin.from('admin_profiles').insert({ user_id: created.user.id, email, role: userRole })
+    const { error: profErr } = await admin.from('admin_profiles').insert({ user_id: created.user.id, email, role: 'chef' })
     if (profErr) {
       await admin.auth.admin.deleteUser(created.user.id)
       return json({ error: profErr.message }, 400)
@@ -95,3 +98,4 @@ Deno.serve(async (req) => {
 
   return json({ error: 'Unknown action' }, 400)
 })
+
